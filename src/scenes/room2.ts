@@ -1,37 +1,28 @@
-import * as utils from '../../node_modules/@dcl/ecs-scene-utils/dist/index'
-
+import * as utils from '@dcl/ecs-scene-utils';
+import { Door } from './gameObjects/door';
+import { Timer } from './gameObjects/timer';
+import { Button } from './gameObjects/button';
 export function CreateRoom2(): void {
-  const door = new Entity();
-  engine.addEntity(door);
-  door.addComponent(new GLTFShape('models/room2/Puzzle02_Door.glb'));
-  door.addComponent(
-    new Transform({
+  const door = new Door(
+    new GLTFShape('models/room2/Puzzle02_Door.glb'),
+    {
       position: new Vector3(24.1, 5.51634, 24.9),
-    })
-  );
-
-  door.addComponent(new Animator());
-  door
-    .getComponent(Animator)
-    .addClip(new AnimationState('Door_Open', { looping: false }));
-  // Adding an additional animation for closing the door
-  door
-    .getComponent(Animator)
-    .addClip(new AnimationState('Door_Close', { looping: false }));
-
-  door.addComponent(
-    new AudioSource(
-      new AudioClip('sounds/01-door-playground_sounds_door_squeak.mp3')
-    )
+    },
+    new AudioClip('sounds/01-door-playground_sounds_door_squeak.mp3')
   );
 
   door.addComponent(
     new OnClick((): void => {
-      // Play the animation
-
-      door.getComponent(Animator).getClip('Door_Open').play();
+      door.openDoor();
     })
   );
+  
+  const countdownText = new Timer({
+    position: new Vector3(25.1272, 9.51119, 25.2116),
+    rotation: Quaternion.Euler(-20, 180, 0),
+  });
+  countdownText.updateTimeString(5);
+  
 
   const button = new Entity();
   engine.addEntity(button);
@@ -53,56 +44,36 @@ export function CreateRoom2(): void {
 
   button.addComponent(
     new OnClick((): void => {
-      // Animate the button press
-      button.getComponent(Animator).getClip('Button_Action').play();
+      if (!countdownText.hasComponent(utils.Interval)) {
+        // Animate the button press
+        button.getComponent(Animator).getClip('Button_Action').play();
 
-      // And play the button sound effect
-      button.getComponent(AudioSource).playOnce();
+        // And play the button sound effect
+        button.getComponent(AudioSource).playOnce();
 
-      // Open the door
-      door.getComponent(Animator).getClip('Door_Close').play();
+        // Open the door
+        door.openDoor();
 
-      // And play the sound effect
-      door.getComponent(AudioSource).playOnce();
-    })
-  );
+        let timeRemaining = 5;
+        countdownText.addComponent(
+          new utils.Interval(1000, (): void => {
+            // 1 second has past (passed?)
+            timeRemaining--;
 
-  const countdownText = new Entity();
-  engine.addEntity(countdownText);
+            if (timeRemaining > 0) {
+              countdownText.getComponent(TextShape).value =
+                formatTimeString(timeRemaining);
+            } else {
+              // Timer has reached 0! Remove the interval to prevent a negative time
+              countdownText.removeComponent(utils.Interval);
 
-  countdownText.addComponent(
-    new Transform({
-      position: new Vector3(25.1272, 9.51119, 25.2116),
-      rotation: Quaternion.Euler(-20, 180, 0),
-    })
-  );
+              // Close the door
+              door.closeDoor();
 
-  // Use a `TextShape` and set the default value
-  countdownText.addComponent(new TextShape(formatTimeString(5)));
-
-  // And style the text a bit
-  countdownText.getComponent(TextShape).color = Color3.Red();
-  countdownText.getComponent(TextShape).fontSize = 5;
-
-  let timeRemaining = 5;
-  countdownText.addComponent(
-    new utils.Interval(1000, (): void => {
-      // 1 second has past (passed?)
-      timeRemaining--;
-
-      if (timeRemaining > 0) {
-        countdownText.getComponent(TextShape).value =
-          formatTimeString(timeRemaining);
-      } else {
-        // Timer has reached 0! Remove the interval to prevent a negative time
-        countdownText.removeComponent(utils.Interval);
-
-        // Close the door
-        door.getComponent(Animator).getClip('Door_Close').play();
-
-        door.getComponent(AudioSource).playOnce();
-
-        countdownText.getComponent(TextShape).value = formatTimeString(5);
+              countdownText.getComponent(TextShape).value = formatTimeString(5);
+            }
+          })
+        );
       }
     })
   );
