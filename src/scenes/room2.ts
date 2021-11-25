@@ -1,4 +1,4 @@
-import utils from 'decentraland-ecs-utils';
+import * as utils from '../../node_modules/@dcl/ecs-scene-utils/dist/index'
 
 export function CreateRoom2(): void {
   const door = new Entity();
